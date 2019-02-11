@@ -2,12 +2,18 @@
   "name": "liri-node-app",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "liri.js",
   "dependencies": {
-    "dotenv": "^4.0.0",
-    "g": "^2.0.1",
-    "node-spotify-api": "^1.0.7",
-    "request": "^2.83.0",
+    "bootstrap": "^4.2.1",
+    "javascript": "^1.0.0",
+    "jquery": "^3.3.1",
+    "key.js": "^1.0.7",
+    "node": "^11.9.0",
+    "prettyjson": "^1.2.1",
+    "promise": "^8.0.2",
+    "request": "^2.88.0",
+    "requirer": "^0.0.4",
+    "spotify-web-api-node": "^4.0.0",
     "twitter": "^1.7.1"
   },
   "devDependencies": {},
@@ -16,12 +22,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ackermax/liri-node-app.git"
+    "url": "git+https://github.com/njd1228/liri-node-app.git"
   },
-  "author": "",
+  "keywords": [
+    "liri",
+    "node-app",
+    "liri-bot",
+    "liri-node-app",
+    "liri-bot-app"
+  ],
+  "author": "Nicholas Donato",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/ackermax/liri-node-app/issues"
+    "url": "https://github.com/njd1228/liri-node-app/issues"
   },
-  "homepage": "https://github.com/ackermax/liri-node-app#readme"
+  "homepage": "https://github.com/njd1228/liri-node-app#readme"
 }
