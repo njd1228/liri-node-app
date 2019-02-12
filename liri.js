@@ -62,7 +62,7 @@ var getMeSpotify = function(songName) {
   );
 };
 
-var getMyBands = function(artist) {
+var getMyArtists = function(artist) {
   var queryURL = "https://rest.bandsintown.com/artists/" + artist + "/events?app_id=codingbootcamp";
 
   axios.get(queryURL).then(
@@ -139,7 +139,7 @@ var doWhatItSays = function() {
 var pick = function(caseData, functionData) {
   switch (caseData) {
   case "concert-this":
-    getMyBands(functionData);
+    getMyArtists(functionData);
     break;
   case "spotify-this-song":
     getMeSpotify(functionData);
