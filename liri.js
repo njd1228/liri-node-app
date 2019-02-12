@@ -1,253 +1,415 @@
-var fs = require('fs');
-var os = require('os');
-var request = require('request');
-var Twitter = require('twitter');
-var Spotify = require('spotify-web-api-node');
-var prettyjson = require('prettyjson');
-var keys = require('./keys.js');
 
-var first_argv = process.argv[2];
-var second_argv = process.argv[3];
 
-/**
-* Determine which command to run based on arguments provided or respond with error
-* message if argument is not supported.
-*
-* @param {String} cmd LIRI command user wants to execute.
-* @param {String} param If needed, argument value provided by user (ie, song or movie).
-* @return {}
-*/
-function liriCommandRunner(cmd, param) {
-    switch (cmd) {
-        case "my-tweets":
-            //TODO: IMPLEMENT WAY FOR USER TO INPUT TWITTER ACCOUNT INFORMATION.
-            myTweets();
-            break;
-        case "spotify-this-song":
-            //TODO: VALIDATE SONG STRING BEFORE PASSING TO FUNCTION.
-            spotifyThis(param)
-            break;
-        case "movie-this":
-            //TODO: VALIDATE MOVIE STRING BEFORE PASSING TO FUNCTION.
-            movieThis(param)
-            break;
-        case "do-what-it-says":
-            //TODO: ADD SOMETHING AWESOME TO THIS FUNCTION.
-            doWhatItSays();
-            break;
-        default:
-            console.log(first_argv + " : command not found");
-    }
+// Link in Node Packages
+var fs = require('fs'); // Included with Node.js --> Read/Write files
+var request = require('request'); // https://www.npmjs.com/package/request --> API request client
+var spotify = require('spotify'); // https://www.npmjs.com/package/spotify --> Spotify API client library
+var Twitter = require('twitter'); // https://www.npmjs.com/package/twitter --> Twitter API client library
+
+
+// Link in API Keys for Twitter
+var apiKeys = require('./keys.js');
+
+var client = new Twitter({
+  consumer_key: apiKeys.twitterKeys.consumer_key,
+  consumer_secret: apiKeys.twitterKeys.consumer_secret,
+  access_token_key: apiKeys.twitterKeys.access_token_key,
+  access_token_secret: apiKeys.twitterKeys.access_token_secret
+});
+
+var params = {
+    screen_name: myTwitterUserName,
+    count: 20
+};
+
+
+
+// Collect the User Command Tyoe
+var commandType = process.argv[2];
+
+
+// Collect the User Command String (Loop through everything in case the input is not passed in quotes)
+var commandString = "";
+for(var i = 3; i < process.argv.length; i++){
+  commandString += process.argv[i] + " ";
+}
+// Remove the last space
+commandString = commandString.trim();
+
+
+
+
+// =================================== Log all inputs the user makes ===================================
+
+// Variable to log every input (good or bad) into log.txt
+var addToLog = "node liri.js ";
+
+// Loop through all of process.argv
+for(var i = 2; i < process.argv.length; i++){
+  addToLog += process.argv[i] + " ";
+}
+addToLog = addToLog.substring(0, addToLog.length - 1); // remove the last space
+
+// Append the log to the txt file (with a line break)
+fs.appendFile("log.txt", addToLog + '\n', function(err) {
+  
+  // If an error in logging was experienced, inform the user. Otherwise, proceed.
+  if(err){
+    console.log('Error in user logging: ' + err);
+  }
+
+});
+
+
+
+
+// =================================== Log all outputs LIRI makes ===================================
+
+// 
+
+
+
+// =================================== Input Arguments Logic ===================================
+
+// Switch case for the User Command Types
+switch(commandType){
+
+  // Case 1 - Twitter
+  case 'my-tweets':
+    callTwitter();
+    break;
+
+
+  // Case 2 - Spotify
+  case 'spotify-this-song':
+    callSpotify(commandString);
+    break;
+
+
+  // Case 3 - IMBD (Request)
+  case 'movie-this':
+    callMovieRequest(commandString);
+    break;
+
+
+  // Case 4 - FS Read
+  case 'do-what-it-says':
+    callWhatItSays();
+    break;
+
+
+  // Case 00 - Handle Invalid Entry
+  default:
+
+    // Skip a line in console
+    console.log('');
+
+    // Prompt Message
+    var userPrompt = 'Please pass in a valid LIRI command type...' + '\n' + 'Ex: "my-tweets", "spotify-this-song", "movie-this", or "do-what-it-says"';
+    
+    // Show message in console
+    console.log(userPrompt);
+
+    // Append to log
+    fs.appendFile("log.txt", userPrompt + '\n\n\n', function(err) {
+      if(err){
+        console.log('Error in output logging: ' + err);
+      }
+    });
+
+
+
 }
 
-/**
-* Command:
-* node liri.js my-tweets
-*
-* Description:
-* Console output containing last 20 tweets and dtg when tweets were created.
-*
-* @param {}
-* @return {}
-*/
-function myTweets() {
 
-    var twitter_client = new Twitter({
-        consumer_key: process.env.TWITTER_CONSUMER_KEY,
-        consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
-        access_token_key: process.env.TWITTER_ACCESS_TOKEN_KEY,
-        access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET
+
+
+// =================================== Functions to Call APIs ===================================
+
+
+// Twitter Function
+function callTwitter(){
+
+  // Skip a line in console
+  console.log('');
+
+  // Create a request to the Twitter API for my specific API keys (linked in from "keys.js" file)
+  //client.get('search/tweets', function(error, tweets, response) {
+  client.get('statuses/user_timeline', params, function(error, tweets, response) {
+    
+    // Check for error
+    if(error) throw error;
+    
+    // If no error, then proceed with looping all tweets (max of 20)
+    var displayTweets = ""; // Used to store tweets for log.txt
+    for(var i = 0; i < tweets.length; i++){
+      var currentTweet = "Tweet " + (i+1) + ": " + '\n' + tweets[i].text;
+
+      // Display to User (done inside loop because I wanted to add more spaces between the tweets, looks nicer)
+      console.log(currentTweet);
+      console.log('');
+
+      // Push to Log Variable
+      displayTweets += currentTweet + '\n';
+    }
+
+    // Append to log
+    fs.appendFile("log.txt", displayTweets + '\n\n', function(err) {
+      if(err){
+        console.log('Error in output logging: ' + err);
+      }
+    });
+
+  });
+
+}
+
+// -----------------------------------------------------------------------------------------
+
+// Spotify Function
+function callSpotify(userInput){
+
+  // Skip a line in console
+  console.log('');
+
+
+  // Test if a song name was passed into LIRI
+  var songName;
+  if(userInput == ""){
+    // If nothing is specified, search a default song
+    songName = "The Sign Ace of Base"; // needed to specify "Ace of Base" here, otherwise I got the Suicide Squad album 
+  }
+  else{
+    // If there is an input, then collect it
+    songName = userInput;
+  }
+
+
+  // Create a request to the Spotify API with the song specified
+  spotify.search({ type: 'track', query: songName }, function(err, data) {
+
+    // Unsucessful Query
+    if ( err ) {
+      console.log('Error occurred: ' + err);
+      return;
+    }
+    // Successful Query
+    else{
+
+      // Create display/log variable
+      var displaySpotify = "";
+
+      // Display text for Song Name
+      var displaySong = 'Track Name: ' + data.tracks.items[0].name;
+      displaySpotify += displaySong + '\n';
+
+
+      // Display text for Artist(s) - If there is more than 1 artist, then loop through them all
+      var artists = "";
+      for(var i = 0; i < data.tracks.items[0].artists.length; i++){
+        artists += data.tracks.items[0].artists[i].name + ", ";
+      }
+      artists = artists.substring(0,artists.length - 2); // remove the last comma and space
+      var displayArtists = 'Artist Name(s): ' + artists;
+      displaySpotify += displayArtists + '\n';
+
+
+      // Display text for Album
+      var displayAlbum = 'Album Name: ' + data.tracks.items[0].album.name;
+      displaySpotify += displayAlbum + '\n';
+
+
+      // Display text for Preview Link from Spotify
+      var displayURL = 'Preview Song URL: ' + data.tracks.items[0].preview_url;
+      displaySpotify += displayURL + '\n';
+
+
+      // Display Spotify Ouput to the user
+      console.log(displaySpotify);
+
+
+      // Append to log
+      fs.appendFile("log.txt", displaySpotify + '\n\n', function(err) {
+        if(err){
+          console.log('Error in output logging: ' + err);
+        }
       });
 
-    var user = 'PennStateFball';
-    var tweet_count = 20;
 
-    twitter_client.get('statuses/user_timeline', {screen_name: user, count: tweet_count}, function(error, tweets) {
+    }
 
-        if (error)
-            throw error;
-        else {
-            var tweet_data = [];
+  });
 
-            for ( i in tweets ) {
-                var data = {
-                        "Created"   : tweets[i].created_at,
-                        "Tweet"     : tweets[i].text,
-                        "Retweeted" : tweets[i].retweet_count,
-                        "Favorited" : tweets[i].favorite_count
-                        };
-                tweet_data.push(data);
-            }
+}
 
-            console.log("---------------------------- START --------------------------------");
-            console.log("Successfully retrieved " + tweets.length + " tweets (maximum 20) from Twitter.");
-            console.log("===================================================================");
-            console.log(prettyjson.render(tweet_data, { keysColor  : 'green', stringColor: 'white' }));
-            console.log("===================================================================");
-            console.log("---------------------------- END ----------------------------------");
+// -----------------------------------------------------------------------------------------
+
+// IMDB Request Function
+function callMovieRequest(userInput){
+
+  // Skip a line in console
+  console.log('');
+
+
+  // Test if a move name was passed into LIRI
+  var movieName;
+  if(userInput == ""){
+    // If nothing is specified, search a default movie
+    movieName = "Mr.+Nobody";
+  }
+  else{
+    // If there is an input, then collect it and remove any spaces
+    movieName = userInput.replace(/ /g, "+");
+  }
+
+
+  // Create a request URL to the OMDB API with the movie specified (include full plot and rotten tomatoes)
+  var queryUrl = 'http://www.omdbapi.com/?t=' + movieName +'&plot=full&tomatoes=true&r=json';
+
+  // Use the Request Node Package to pull from the OMDB API
+  request(queryUrl, function (error, response, body) {
+
+    // Successful Query
+    if (!error && response.statusCode == 200) {
+
+      // Create a display variable
+      var displayIMDB = "";
+
+      // Display Title
+      var displayTitle = "Title: " + JSON.parse(body)["Title"];
+      displayIMDB += displayTitle + '\n';
+
+      // Display Year
+      var displayYear = "Year: " + JSON.parse(body)["Year"];
+      displayIMDB += displayYear + '\n';
+
+      // Display Age Rating
+      var displayAge = "Rated: " + JSON.parse(body)["Rated"];
+      displayIMDB += displayAge + '\n';
+
+      // Display IMDB Rating
+      var displayRating = "IMDB Rating: " + JSON.parse(body)["imdbRating"];
+      displayIMDB += displayRating + '\n';
+
+      // Display Country where produced
+      var displayCountry = "Country of Production: " + JSON.parse(body)["Country"];
+      displayIMDB += displayCountry + '\n';
+
+      //Display Language of movie
+      var displayLanguage = "Language: " + JSON.parse(body)["Language"];
+      displayIMDB += displayLanguage + '\n';
+
+      // Display Plot of movie
+      var displayPlot = "Plot: " + JSON.parse(body)["Plot"];
+      displayIMDB += displayPlot + '\n';
+
+      // Display Actors in movie
+      var displayActors = "Actors: " + JSON.parse(body)["Actors"];
+      displayIMDB += displayActors + '\n';
+
+      // Display Rotten Tomatoes Rating (Critic)
+      var displayTomatoCritic = "Rotten Tomatoes Rating (Critics): " + JSON.parse(body)["tomatoRating"];
+      displayIMDB += displayTomatoCritic + '\n';
+
+      // Display Rotten Tomatoes Rating (Users)
+      var displayTomatoUser = "Rotten Tomatoes Rating (Users): " + JSON.parse(body)["tomatoUserRating"];
+      displayIMDB += displayTomatoUser + '\n';
+
+      // Display Rotten Tomatoes URL
+      var displayTomatoURL = "Rotten Tomatoes URL: " + JSON.parse(body)["tomatoURL"];
+      displayIMDB += displayTomatoURL + '\n';
+
+
+
+      // Display everything to the user
+      console.log(displayIMDB);
+
+
+
+      // Append to log
+      fs.appendFile("log.txt", displayIMDB + '\n\n', function(err) {
+        if(err){
+          console.log('Error in output logging: ' + err);
         }
-    });
+      });
 
-    appendLogFile("Executed my-tweets");
+
+    }
+    // Unsucessful Query
+    else{
+      console.log('Error occurred: ' + error);
+    }
+
+  });
+
 }
 
-/**
-* Command:
-* node liri.js spotify-this-song '<song name here>'
-*
-* Description:
-* Console output containing the following song data: Song title, album title,
-* artist(s), preview url for Spotify. If no song is provided, default will
-* display data for "The Sign" by Ace of Base.
-*
-* @param {String} song Title of song to query using Spotify API.
-* @return {}
-*/
-function spotifyThis(song) {
+// -----------------------------------------------------------------------------------------
 
-    var spotify_client = new Spotify({
-        clientId    : keys.spotify_keys.client_id,
-        clientSecret: keys.spotify_keys.client_secret
+// Bonus (Do What It Says) Function
+function callWhatItSays(){
+
+  // Read from the random.txt file
+  fs.readFile("random.txt", "utf8", function(error, data) {
+
+    // Split the text into a command type and input
+    var dataArr = data.split(",")
+    var randomCommandType = dataArr[0];
+    var randomCommandString = dataArr[1];
+
+    // Display the call to the user
+    console.log('');
+    var randomCall = 'Running Command: ' + randomCommandType + ' ' + randomCommandString;
+    console.log(randomCall);
+
+    // Append to log
+    fs.appendFile("log.txt", randomCall + '\n', function(err) {
+      if(err){
+        console.log('Error in output logging: ' + err);
+      }
     });
 
-    spotify_client.searchTracks(song).then(function(res) {
 
-        // console.log("************** DEBUGGING PURPOSES ONLY *****************");
-        // console.log("RESPONSE HREF: " + res.body.tracks.href);
-        // console.log("********************************************************");
+    // Switch case to determine which function to call
+    switch(randomCommandType){
 
-        var spot_data = [];
-        var tracks = res.body.tracks.items;
+      // Case 1 - Twitter
+      case 'my-tweets':
+        callTwitter();
+        break;
 
-        for ( i in tracks ) {
-            var data = {
-                    "Track"      : tracks[i].name,
-                    "Album"      : tracks[i].album.name,
-                    "Artist(s)"  : tracks[i].artists[0].name,
-                    "Preview URL": tracks[i].preview_url
-                    };
-            spot_data.push(data);
+
+      // Case 2 - Spotify
+      case 'spotify-this-song':
+        callSpotify(randomCommandString);
+        break;
+
+
+      // Case 3 - IMBD (Request)
+      case 'movie-this':
+        callMovieRequest(randomCommandString);
+        break;
+
+
+      // Case 00 - Unable to parse meaningful command
+      default:
+
+      // Create an error message for the user
+      var userPrompt = 'Sorry! Something is wrong with the "random.txt" file.' + '\n' + 'Use your imagination to come up with a LIRI command.';
+      
+      // Show message in console
+      console.log('');
+      console.log(userPrompt);
+
+      // Append to log
+      fs.appendFile("log.txt", userPrompt + '\n\n\n', function(err) {
+        if(err){
+          console.log('Error in output logging: ' + err);
         }
+      });
 
-        //TODO: RUN THROUGH ANOTHER LOOP IN ORDER TO PRINT ARTIST(S) IF THERE ARE MORE THAN ONE.
+    }
 
-        var total_items = tracks.length;
+  });
 
-        console.log("---------------------------- START --------------------------------");
-        console.log("Successfully retrieved " + total_items + " items from Spotify");
-        console.log("===================================================================");
-        console.log(prettyjson.render(spot_data, { keysColor  : 'green', stringColor: 'white' }));
-        console.log("===================================================================");
-        console.log("---------------------------- END ----------------------------------");
-
-    }, function(error) {
-            console.error(error);
-    });
-
-    appendLogFile("Executed spotify-this-song with argument " + "'" + song  + "'");
 }
-
-/**
-* Command:
-* node liri.js movie-this '<movie name here>'
-*
-* Description:
-* Console output containing the following movie data: Movie title, plot,
-* release year, country where movie was produced, language, IMDB rating,
-* actors, Rotten Tomatoes rating, Rotten Tomatoes URL.
-*
-* If no movie specified, output data for the movie 'Mr. Nobody'.
-*
-* @param {String} movie Title of movie to query using OMDB API.
-* @return {}
-*/
-function movieThis(movie) {
-
-    var query_url = 'http://www.omdbapi.com/?t=' + movie +'&y=&plot=long&tomatoes=true&r=json';
-
-    request(query_url, function(error, res, body) {
-
-        if (!error && res.statusCode == 200) {
-
-            var movie_data = {
-                "Title"                 : JSON.parse(body).Title,
-                "Released"              : JSON.parse(body).Released,
-                "Country"               : JSON.parse(body).Country,
-                "Language(s)"           : JSON.parse(body).Language,
-                "Actors"                : JSON.parse(body).Actors,
-                "IMDB Rating"           : JSON.parse(body).imdbRating,
-                "Rotten Tomatoes Rating": JSON.parse(body).tomatoRating,
-                "Rotten Tomatoes URL"   : JSON.parse(body).tomatoURL,
-                "Plot"                  : JSON.parse(body).Plot
-            }
-
-            console.log("---------------------------- START --------------------------------");
-            console.log("Successfully retrieved OMDB results for " + movie_data.Title + ".");
-            console.log("===================================================================");
-            console.log(prettyjson.render(movie_data, { keysColor  : 'green', stringColor: 'white' }));
-            console.log("===================================================================");
-            console.log("---------------------------- END ----------------------------------");
-        }
-        else
-            console.error(error);
-    });
-
-    appendLogFile("Executed movie-this with argument " + "'" + movie  + "'");
-}
-
-/**
-* Command:
-* node liri.js do-what-it-says
-*
-* Description:
-* Read random.txt file and call one of LIRI's commands contained in that file.
-*
-* @param {}
-* @return {}
-*/
-function doWhatItSays() {
-
-    fs.readFile("random.txt", "utf8", function(err, random_txt) {
-
-        var ran_txt = random_txt.split(',');
-        var func = ran_txt[0];
-        var param = ran_txt[1];
-
-        console.log("PARAM: ", param);
-
-        switch (func) {
-            case "my-tweets":
-                myTweets();
-                break;
-            case "spotify-this-song":
-                spotifyThis(param);
-                break;
-            case "movie-this":
-                movieThis(param);
-                break;
-        }
-    });
-
-    appendLogFile("Executed do-what-it-says");
-}
-
-/**
-* Appends new log entry to log.txt file.
-*
-* @param {}
-* @return {}
-*/
-function appendLogFile(log_entry) {
-
-    var dtg = new Date() + ': ';
-
-    fs.appendFile('log.txt', dtg + log_entry + os.EOL, 'utf8', function(error) {
-        if (error)
-            throw error;
-    });
-}
-
-/*******************************************
-* --- ENTRY POINT --- Executes LIRI command
-********************************************/
-liriCommandRunner(first_argv, second_argv);
